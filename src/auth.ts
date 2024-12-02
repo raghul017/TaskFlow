@@ -4,6 +4,7 @@ import bcrypt from "bcryptjs";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import { DefaultSession } from "next-auth";
+import type { User as AuthUser } from "next-auth";
 
 declare module "next-auth" {
   interface Session {
@@ -31,18 +32,20 @@ export const {
         email: { label: "Email", type: "email" },
         password: { label: "Password", type: "password" },
       },
-      async authorize(credentials) {
+      async authorize(
+        credentials: Partial<Record<"email" | "password", unknown>>
+      ): Promise<AuthUser | null> {
         if (!credentials?.email || !credentials?.password) return null;
 
         await dbConnect();
-        const user = await User.findOne({ email: credentials.email }).select(
-          "+password"
-        );
+        const user = await User.findOne({
+          email: credentials.email as string,
+        }).select("+password");
 
-        if (!user) return null;
+        if (!user || !user.password) return null;
 
         const isValid = await bcrypt.compare(
-          String(credentials.password),
+          credentials.password as string,
           user.password
         );
 
@@ -61,12 +64,7 @@ export const {
     async session({ session, token }) {
       if (session.user) {
         session.user.id = token.sub as string;
-        const user = await User.findById(token.sub).select("-password");
-        if (user) {
-          session.user.name = user.name;
-          session.user.email = user.email;
-          session.user.role = user.role;
-        }
+        session.user.role = token.role as string;
       }
       return session;
     },
@@ -84,5 +82,4 @@ export const {
   session: {
     strategy: "jwt",
   },
-  debug: true,
 });

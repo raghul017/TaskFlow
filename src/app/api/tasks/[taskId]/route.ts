@@ -5,7 +5,7 @@ import Task from "@/models/Task";
 
 export async function PUT(
   request: NextRequest,
-  { params }: { params: { taskId: string } }
+  params: { params: { taskId: string } }
 ) {
   try {
     const authHeader = request.headers.get("authorization");
@@ -27,7 +27,7 @@ export async function PUT(
 
     await dbConnect();
     const task = await Task.findOneAndUpdate(
-      { _id: params.taskId, userId: decodedToken.id },
+      { _id: params.params.taskId, userId: decodedToken.id },
       { status },
       { new: true }
     ).lean();

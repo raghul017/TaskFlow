@@ -34,15 +34,15 @@ export default function ProfilePage() {
     try {
       const userData = JSON.parse(userStr);
       setUser(userData);
-      setFormData({
-        ...formData,
+      setFormData((prev) => ({
+        ...prev,
         name: userData.name,
         email: userData.email,
-      });
-    } catch (error) {
-      router.push("/sign-in");
-    } finally {
+      }));
       setLoading(false);
+    } catch (error) {
+      console.error("Error parsing user data:", error);
+      router.push("/sign-in");
     }
   }, [router]);
 
@@ -80,6 +80,7 @@ export default function ProfilePage() {
         });
       }
     } catch (error) {
+      console.error("Error updating profile:", error);
       setMessage({ type: "error", text: "Something went wrong" });
     }
   };

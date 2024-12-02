@@ -1,6 +1,6 @@
 "use client";
 
-import { Check, Star } from "lucide-react";
+import { Check } from "lucide-react";
 
 export default function PricingPage() {
   return (

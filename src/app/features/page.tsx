@@ -2,15 +2,13 @@
 
 import {
   ArrowRight,
-  CheckCircle,
-  Zap,
-  Users,
-  Lock,
-  Bell,
-  Clock,
   BarChart,
-  Layers,
+  CheckCircle,
+  Clock,
   GitBranch,
+  Layers,
+  Users,
+  Zap,
 } from "lucide-react";
 import Image from "next/image";
 

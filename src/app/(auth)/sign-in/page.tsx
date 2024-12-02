@@ -4,6 +4,7 @@ import { useState } from "react";
 import { useRouter } from "next/navigation";
 import { Mail, Lock } from "lucide-react";
 import Link from "next/link";
+import { signIn } from "next-auth/react";
 
 export default function SignInPage() {
   const router = useRouter();
@@ -36,7 +37,7 @@ export default function SignInPage() {
 
       localStorage.setItem("token", data.token);
       localStorage.setItem("user", JSON.stringify(data.user));
-      router.push("/dashboard");
+      router.replace("/dashboard");
     } catch (error) {
       setError(error instanceof Error ? error.message : "Something went wrong");
     } finally {
@@ -49,7 +50,9 @@ export default function SignInPage() {
       await signIn(provider, {
         callbackUrl: "/dashboard",
       });
-    } catch (error: any) {
+    } catch (error) {
+      console.log(error);
+
       setError("Failed to sign in");
     }
   };

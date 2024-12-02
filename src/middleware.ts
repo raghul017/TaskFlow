@@ -1,36 +1,25 @@
 import { NextResponse } from "next/server";
 import type { NextRequest } from "next/server";
 
-const publicRoutes = [
-  "/",
-  "/features",
-  "/solutions",
-  "/resources",
-  "/pricing",
-  "/sign-in",
-  "/sign-up",
-];
+export function middleware(request: NextRequest) {
+  const token = request.cookies.get("token")?.value;
+  const isAuthPage =
+    request.nextUrl.pathname.startsWith("/sign-in") ||
+    request.nextUrl.pathname.startsWith("/sign-up");
 
-export async function middleware(request: NextRequest) {
-  const { pathname } = request.nextUrl;
-
-  // Allow access to public routes
-  if (publicRoutes.includes(pathname)) {
-    return NextResponse.next();
+  if (request.nextUrl.pathname.startsWith("/dashboard")) {
+    if (!token) {
+      return NextResponse.redirect(new URL("/sign-in", request.url));
+    }
   }
 
-  // For dashboard and other protected routes
-  if (pathname.startsWith("/dashboard")) {
-    const token = request.cookies.get("token") || localStorage.getItem("token");
-
-    if (!token) {
-      return NextResponse.redirect(new URL("/sign-in", request.nextUrl));
-    }
+  if (isAuthPage && token) {
+    return NextResponse.redirect(new URL("/dashboard", request.url));
   }
 
   return NextResponse.next();
 }
 
 export const config = {
-  matcher: ["/((?!api|_next/static|_next/image|favicon.ico).*)"],
+  matcher: ["/dashboard/:path*", "/sign-in", "/sign-up"],
 };

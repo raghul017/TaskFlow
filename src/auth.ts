@@ -5,13 +5,16 @@ import dbConnect from "@/lib/db";
 import User from "@/models/User";
 import { DefaultSession } from "next-auth";
 
-// Extend the session type
 declare module "next-auth" {
   interface Session {
     user: {
       id: string;
       role?: string;
     } & DefaultSession["user"];
+  }
+
+  interface User {
+    role?: string;
   }
 }
 
@@ -36,12 +39,14 @@ export const {
           "+password"
         );
 
-        if (
-          !user ||
-          !(await bcrypt.compare(credentials.password, user.password))
-        ) {
-          return null;
-        }
+        if (!user) return null;
+
+        const isValid = await bcrypt.compare(
+          String(credentials.password),
+          user.password
+        );
+
+        if (!isValid) return null;
 
         return {
           id: user._id.toString(),

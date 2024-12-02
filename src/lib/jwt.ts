@@ -19,12 +19,11 @@ export function verifyToken(token: string) {
     const decoded = jwt.verify(token, JWT_SECRET) as {
       id: string;
       email: string;
+      userId?: string;
     };
-    if (!decoded.id) {
-      return null;
-    }
     return decoded;
-  } catch (_error) {
+  } catch (error) {
+    console.error("Token verification error:", error);
     return null;
   }
 }
@@ -42,7 +41,8 @@ export function verifyResetToken(token: string) {
       throw new Error("Invalid token type");
     }
     return decoded;
-  } catch (_error) {
+  } catch (error) {
+    console.error("Reset token verification error:", error);
     throw new Error("Invalid or expired reset token");
   }
 }

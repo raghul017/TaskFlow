@@ -1,16 +1,15 @@
 "use client";
 
 import {
-  Book,
-  FileText,
-  Video,
-  Download,
   ArrowRight,
-  Search,
-  Bookmark,
-  PlayCircle,
+  Book,
+  Download,
   FileCode,
+  FileText,
   GraduationCap,
+  PlayCircle,
+  Search,
+  Video,
 } from "lucide-react";
 import Image from "next/image";
 

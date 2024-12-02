@@ -1,7 +1,7 @@
-import { NextResponse } from "next/server";
+import clientPromise from "@/lib/mongodb";
 import bcrypt from "bcryptjs";
 import jwt from "jsonwebtoken";
-import clientPromise from "@/lib/mongodb";
+import { NextResponse } from "next/server";
 
 const JWT_SECRET = process.env.JWT_SECRET || "your-secret-key";
 
@@ -33,7 +33,7 @@ export async function POST(request: Request) {
       { expiresIn: "7d" }
     );
 
-    const { password: _, ...userWithoutPassword } = user;
+    const { ...userWithoutPassword } = user;
 
     return NextResponse.json({
       token,

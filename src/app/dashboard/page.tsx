@@ -20,8 +20,7 @@ import {
 } from "lucide-react";
 import { useRouter } from "next/navigation";
 import { useEffect, useState, useMemo } from "react";
-import { handleAPIError, isAuthError } from "@/utils/error";
-import { ErrorDisplay } from "@/components/ui/ErrorDisplay";
+import { handleAPIError } from "@/utils/error";
 import { SoundManager } from "@/utils/audio";
 import {
   format,
@@ -90,7 +89,7 @@ const defaultTimerSettings = {
   longBreak: 15,
   shortBreakSeconds: 0,
   longBreakSeconds: 0,
-} as const;
+};
 
 // Helper function to get priority config
 const getPriorityConfig = (priority?: Task["priority"]) => {
@@ -125,9 +124,6 @@ export default function DashboardPage() {
   });
   const [editingTask, setEditingTask] = useState<Task | null>(null);
   const [showEditModal, setShowEditModal] = useState(false);
-  const [sortBy, setSortBy] = useState<"priority" | "dueDate" | "status">(
-    "priority"
-  );
   const [searchTerm, setSearchTerm] = useState("");
   const [filterPriority, setFilterPriority] = useState<
     "all" | Task["priority"]
@@ -137,18 +133,14 @@ export default function DashboardPage() {
   const [view, setView] = useState<
     "list" | "calendar" | "analytics" | "timeline" | "settings" | "reports"
   >("list");
-  const [selectedDateForNewTask, setSelectedDateForNewTask] =
-    useState<Date | null>(null);
+
   const [soundManager] = useState(
     () => new SoundManager("/sounds/timer-complete.mp3")
   );
   const [soundVolume, setSoundVolume] = useState(0.5);
-  const [activeNotification, setActiveNotification] =
-    useState<Notification | null>(null);
   const [isTimerComplete, setIsTimerComplete] = useState(false);
   const [timerPosition, setTimerPosition] = useState({ x: 20, y: 20 });
   const [isDragging, setIsDragging] = useState(false);
-  const [error, setError] = useState<string | null>(null);
   const [activeTimer, setActiveTimer] = useState<{
     taskId: string;
     timeLeft: number;
@@ -158,8 +150,16 @@ export default function DashboardPage() {
   const [timelineFilter, setTimelineFilter] = useState<
     "all" | "today" | "week" | "month"
   >("all");
-  const [localTimerSettings, setLocalTimerSettings] =
-    useState(defaultTimerSettings);
+  const [localTimerSettings, setLocalTimerSettings] = useState<{
+    pomodoroLength: number;
+    shortBreak: number;
+    longBreak: number;
+    shortBreakSeconds: number;
+    longBreakSeconds: number;
+  }>(defaultTimerSettings);
+
+  // Add error state
+  const [error, setError] = useState<string | null>(null);
 
   // Add useEffect for fetching tasks
   useEffect(() => {
@@ -194,6 +194,25 @@ export default function DashboardPage() {
     fetchTasks();
   }, [router]);
 
+  useEffect(() => {
+    const userStr = localStorage.getItem("user");
+    if (userStr) {
+      try {
+        const userData = JSON.parse(userStr);
+        setUser(userData);
+      } catch (error) {
+        console.error("Error parsing user data:", error);
+      }
+    }
+  }, []);
+
+  // Use user state in useEffect
+  useEffect(() => {
+    if (!user) {
+      router.push("/sign-in");
+    }
+  }, [user, router]);
+
   // Add filtered tasks computation
   const filteredAndSortedTasks = tasks
     .filter((task) => {
@@ -216,10 +235,16 @@ export default function DashboardPage() {
 
   const toggleTaskStatus = async (taskId: string) => {
     const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!token) {
+      setError("Authentication required");
+      return;
+    }
 
     const task = tasks.find((t) => t._id === taskId);
-    if (!task) return;
+    if (!task) {
+      setError("Task not found");
+      return;
+    }
 
     const newStatus = task.status === "completed" ? "pending" : "completed";
 
@@ -233,8 +258,10 @@ export default function DashboardPage() {
         body: JSON.stringify({ status: newStatus }),
       });
 
+      const data = await res.json();
+
       if (!res.ok) {
-        throw new Error("Failed to update task");
+        throw new Error(data.error || "Failed to update task");
       }
 
       setTasks((prevTasks) =>
@@ -244,8 +271,9 @@ export default function DashboardPage() {
       );
     } catch (error) {
       console.error("Failed to toggle task status:", error);
-      const { message } = handleAPIError(error);
-      setError(message);
+      setError(
+        error instanceof Error ? error.message : "Failed to update task"
+      );
     }
   };
 
@@ -503,6 +531,24 @@ export default function DashboardPage() {
     setUser(null);
     router.push("/sign-in");
   };
+
+  // Add loading state check
+  if (loading) {
+    return (
+      <div className="flex items-center justify-center min-h-screen">
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 dark:border-white"></div>
+      </div>
+    );
+  }
+
+  // Add error display at the component level
+  if (error) {
+    return (
+      <div className="bg-red-50 dark:bg-red-900/30 text-red-700 dark:text-red-400 p-4 rounded-lg mb-4">
+        <p>{error}</p>
+      </div>
+    );
+  }
 
   return (
     <div className="flex min-h-screen bg-gray-50 dark:bg-[#111111]">
@@ -1341,7 +1387,11 @@ export default function DashboardPage() {
                     </h2>
                     <select
                       value={timelineFilter}
-                      onChange={(e) => setTimelineFilter(e.target.value)}
+                      onChange={(e) =>
+                        setTimelineFilter(
+                          e.target.value as "all" | "today" | "week" | "month"
+                        )
+                      }
                       className="px-3 py-1.5 bg-gray-50 dark:bg-gray-700 border border-gray-200 dark:border-gray-600 rounded-lg text-sm"
                     >
                       <option value="all">All Tasks</option>

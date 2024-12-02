@@ -11,7 +11,12 @@ export async function POST(req: Request) {
     }
 
     const token = authHeader.split(" ")[1];
-    const { userId } = verifyToken(token);
+    const decoded = verifyToken(token);
+    if (!decoded || !decoded.id) {
+      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    }
+
+    const { id: userId } = decoded;
     const { taskId, automationType } = await req.json();
 
     await dbConnect();

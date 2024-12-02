@@ -21,25 +21,19 @@ export default function SignInPage() {
     setError("");
 
     try {
-      const res = await fetch("/api/auth/login", {
-        method: "POST",
-        headers: {
-          "Content-Type": "application/json",
-        },
-        body: JSON.stringify(formData),
+      const result = await signIn("credentials", {
+        email: formData.email,
+        password: formData.password,
+        redirect: false,
       });
 
-      const data = await res.json();
-
-      if (!res.ok) {
-        throw new Error(data.error || "Failed to sign in");
+      if (result?.error) {
+        throw new Error(result.error);
       }
 
-      localStorage.setItem("token", data.token);
-      localStorage.setItem("user", JSON.stringify(data.user));
-      router.replace("/dashboard");
+      router.push("/dashboard");
     } catch (error) {
-      setError(error instanceof Error ? error.message : "Something went wrong");
+      setError(error instanceof Error ? error.message : "Failed to sign in");
     } finally {
       setLoading(false);
     }
@@ -47,9 +41,7 @@ export default function SignInPage() {
 
   const handleSocialSignIn = async (provider: "google") => {
     try {
-      await signIn(provider, {
-        callbackUrl: "/dashboard",
-      });
+      await signIn(provider, { redirectTo: "/dashboard" });
     } catch (error) {
       console.log(error);
 

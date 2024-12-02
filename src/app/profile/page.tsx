@@ -1,20 +1,13 @@
 "use client";
 
 import { useState, useEffect } from "react";
-import { useRouter } from "next/navigation";
 import { motion } from "framer-motion";
 import { User, Mail, Key, Save } from "lucide-react";
-
-interface UserProfile {
-  id: string;
-  name: string;
-  email: string;
-}
+import { useSession } from "next-auth/react";
 
 export default function ProfilePage() {
-  const router = useRouter();
-  const [user, setUser] = useState<UserProfile | null>(null);
-  const [loading, setLoading] = useState(true);
+  const { data: session, status } = useSession();
+
   const [formData, setFormData] = useState({
     name: "",
     email: "",
@@ -25,53 +18,31 @@ export default function ProfilePage() {
   const [message, setMessage] = useState({ type: "", text: "" });
 
   useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (!userStr) {
-      router.push("/sign-in");
-      return;
-    }
-
-    try {
-      const userData = JSON.parse(userStr);
-      setUser(userData);
+    if (session?.user) {
       setFormData((prev) => ({
         ...prev,
-        name: userData.name,
-        email: userData.email,
+        name: session.user.name || "",
+        email: session.user.email || "",
       }));
-      setLoading(false);
-    } catch (error) {
-      console.error("Error parsing user data:", error);
-      router.push("/sign-in");
     }
-  }, [router]);
+  }, [session]);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
-    const token = localStorage.getItem("token");
-    if (!token) return;
 
     try {
       const res = await fetch("/api/user/profile", {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
+        credentials: "include",
         body: JSON.stringify(formData),
       });
 
       const data = await res.json();
 
       if (res.ok) {
-        localStorage.setItem(
-          "user",
-          JSON.stringify({
-            ...user,
-            name: formData.name,
-            email: formData.email,
-          })
-        );
         setMessage({ type: "success", text: "Profile updated successfully!" });
       } else {
         setMessage({
@@ -85,7 +56,7 @@ export default function ProfilePage() {
     }
   };
 
-  if (loading || !user) {
+  if (status === "loading") {
     return <div>Loading...</div>;
   }
 

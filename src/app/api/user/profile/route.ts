@@ -1,22 +1,20 @@
 import { NextResponse } from "next/server";
+import { auth } from "@/auth";
 import dbConnect from "@/lib/db";
 import User from "@/models/User";
-import { verifyToken } from "@/lib/jwt";
 import bcrypt from "bcryptjs";
 
 export async function PUT(req: Request) {
   try {
-    const authHeader = req.headers.get("authorization");
-    if (!authHeader || !authHeader.startsWith("Bearer ")) {
+    const session = await auth();
+    if (!session?.user?.id) {
       return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
-    const token = authHeader.split(" ")[1];
-    const { userId } = verifyToken(token);
     const { name, email, currentPassword, newPassword } = await req.json();
 
     await dbConnect();
-    const user = await User.findById(userId).select("+password");
+    const user = await User.findById(session.user.id).select("+password");
 
     if (!user) {
       return NextResponse.json({ error: "User not found" }, { status: 404 });

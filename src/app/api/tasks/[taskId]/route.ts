@@ -1,33 +1,25 @@
 import { NextRequest, NextResponse } from "next/server";
-import { verifyToken } from "@/lib/jwt";
+import { auth } from "@/auth";
 import dbConnect from "@/lib/db";
 import Task from "@/models/Task";
 
 export async function PUT(
   request: NextRequest,
-  params: { params: { taskId: string } }
+  { params }: { params: { taskId: string } }
 ) {
   try {
-    const authHeader = request.headers.get("authorization");
-    if (!authHeader) {
-      return NextResponse.json(
-        { error: "Authorization header missing" },
-        { status: 401 }
-      );
-    }
+    const session = await auth();
+    console.log("SESSION", session);
 
-    const token = authHeader.split(" ")[1];
-    const decodedToken = verifyToken(token);
-
-    if (!decodedToken || !decodedToken.id) {
-      return NextResponse.json({ error: "Invalid token" }, { status: 401 });
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
     }
 
     const { status } = await request.json();
 
     await dbConnect();
     const task = await Task.findOneAndUpdate(
-      { _id: params.params.taskId, userId: decodedToken.id },
+      { _id: params.taskId, userId: session.user.id },
       { status },
       { new: true }
     ).lean();
@@ -39,6 +31,36 @@ export async function PUT(
     return NextResponse.json({ task, success: true });
   } catch (error) {
     console.error("Error updating task:", error);
+    return NextResponse.json(
+      { error: "Internal server error" },
+      { status: 500 }
+    );
+  }
+}
+
+export async function DELETE(
+  request: NextRequest,
+  { params }: { params: { taskId: string } }
+) {
+  try {
+    const session = await auth();
+    if (!session?.user?.id) {
+      return NextResponse.json({ error: "Unauthorized" }, { status: 401 });
+    }
+
+    await dbConnect();
+    const task = await Task.findOneAndDelete({
+      _id: params.taskId,
+      userId: session.user.id,
+    });
+
+    if (!task) {
+      return NextResponse.json({ error: "Task not found" }, { status: 404 });
+    }
+
+    return NextResponse.json({ success: true });
+  } catch (error) {
+    console.error("Error deleting task:", error);
     return NextResponse.json(
       { error: "Internal server error" },
       { status: 500 }

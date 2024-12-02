@@ -34,13 +34,7 @@ import {
   isThisMonth,
   isSameDay,
 } from "date-fns";
-
-// Types
-interface User {
-  id: string;
-  name: string;
-  email: string;
-}
+import { useSession } from "next-auth/react";
 
 interface Task {
   _id: string;
@@ -105,9 +99,8 @@ const formatDuration = (minutes: number) => {
 
 export default function DashboardPage() {
   const router = useRouter();
-  const [user, setUser] = useState<User | null>(null);
+  const { data: session, status } = useSession();
   const [tasks, setTasks] = useState<Task[]>([]);
-  const [loading, setLoading] = useState(true);
   const [showNewTaskModal, setShowNewTaskModal] = useState(false);
   const [newTask, setNewTask] = useState<{
     title: string;
@@ -164,17 +157,11 @@ export default function DashboardPage() {
   // Add useEffect for fetching tasks
   useEffect(() => {
     const fetchTasks = async () => {
-      const token = localStorage.getItem("token");
-      if (!token) {
-        router.push("/sign-in");
-        return;
-      }
+      if (!session) return;
 
       try {
         const res = await fetch("/api/tasks", {
-          headers: {
-            Authorization: `Bearer ${token}`,
-          },
+          credentials: "include",
         });
 
         if (!res.ok) {
@@ -186,32 +173,11 @@ export default function DashboardPage() {
       } catch (error) {
         console.error("Error fetching tasks:", error);
         setError("Failed to load tasks");
-      } finally {
-        setLoading(false);
       }
     };
 
     fetchTasks();
-  }, [router]);
-
-  useEffect(() => {
-    const userStr = localStorage.getItem("user");
-    if (userStr) {
-      try {
-        const userData = JSON.parse(userStr);
-        setUser(userData);
-      } catch (error) {
-        console.error("Error parsing user data:", error);
-      }
-    }
-  }, []);
-
-  // Use user state in useEffect
-  useEffect(() => {
-    if (!user) {
-      router.push("/sign-in");
-    }
-  }, [user, router]);
+  }, [session]);
 
   // Add filtered tasks computation
   const filteredAndSortedTasks = tasks
@@ -234,8 +200,7 @@ export default function DashboardPage() {
   );
 
   const toggleTaskStatus = async (taskId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) {
+    if (!session) {
       setError("Authentication required");
       return;
     }
@@ -253,14 +218,12 @@ export default function DashboardPage() {
         method: "PUT",
         headers: {
           "Content-Type": "application/json",
-          Authorization: `Bearer ${token}`,
         },
         body: JSON.stringify({ status: newStatus }),
       });
 
-      const data = await res.json();
-
       if (!res.ok) {
+        const data = await res.json();
         throw new Error(data.error || "Failed to update task");
       }
 
@@ -278,15 +241,15 @@ export default function DashboardPage() {
   };
 
   const handleDeleteTask = async (taskId: string) => {
-    const token = localStorage.getItem("token");
-    if (!token) return;
+    if (!session) {
+      setError("Authentication required");
+      return;
+    }
 
     try {
       const res = await fetch(`/api/tasks/${taskId}`, {
         method: "DELETE",
-        headers: {
-          Authorization: `Bearer ${token}`,
-        },
+        credentials: "include",
       });
 
       if (!res.ok) {
@@ -524,21 +487,17 @@ export default function DashboardPage() {
     }));
   };
 
-  // Add this with other functions in the DashboardPage component
-  const handleSignOut = () => {
-    localStorage.removeItem("token");
-    localStorage.removeItem("user");
-    setUser(null);
-    router.push("/sign-in");
-  };
-
   // Add loading state check
-  if (loading) {
+  if (status === "loading") {
     return (
       <div className="flex items-center justify-center min-h-screen">
-        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900 dark:border-white"></div>
+        <div className="animate-spin rounded-full h-12 w-12 border-t-2 border-b-2 border-gray-900"></div>
       </div>
     );
+  }
+
+  if (!session) {
+    return null;
   }
 
   // Add error display at the component level
@@ -1337,6 +1296,7 @@ export default function DashboardPage() {
                                     ? "bg-green-500 border-green-500 dark:bg-green-600 dark:border-green-600"
                                     : "border-current"
                                 }`}
+                                onClick={() => toggleTaskStatus(task._id)}
                               >
                                 {task.status === "completed" && (
                                   <svg
@@ -2073,7 +2033,7 @@ export default function DashboardPage() {
                       Edit Profile
                     </button>
                     <button
-                      onClick={handleSignOut}
+                      onClick={() => router.push("/sign-out")}
                       className="w-full text-left px-4 py-2 bg-red-50 dark:bg-red-900/10 text-red-600 dark:text-red-400 rounded-lg hover:bg-red-100 dark:hover:bg-red-900/20"
                     >
                       Sign Out
